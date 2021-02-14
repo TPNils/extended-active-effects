@@ -1,0 +1,25 @@
+/*
+!/.gitignore
+!/.github
+!/dist
+!/gulpfile.js
+!/gulpfile.ts
+!/package.json
+!/tsconfig.json
+!/LICENSE.MIT
+!/README.md
+!/CHANGELOG.md
+
+!/src
+/src/*
+!/src/lang
+!/src/styles
+!/src/templates
+!/src/scripts
+!/src/assets
+!/src/module.json
+
+# Only include scripts which will be compiled by gulp
+/src/scripts/*
+!/src/scripts/*.js
+!/src/scripts/*.ts

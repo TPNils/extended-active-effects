@@ -175,9 +175,8 @@ export class PassiveEffect extends ActiveEffect {
   }
 
 }
-
 let originalApplyActiveEffects: () => void;
-export function registerPassiveEffects(): void {
+function registerPassiveEffects(): void {
   if (originalApplyActiveEffects) {
     throw new Error('Already registered');
   }
@@ -196,4 +195,14 @@ export function registerPassiveEffects(): void {
     originalApplyActiveEffects.call(this);
     this.effects = originalEffects;
   }
+}
+
+export function init(): void {
+  Hooks.on('init', () => {
+    registerPassiveEffects();
+    
+    game[StaticValues.moduleName] = {
+      PassiveEffect: PassiveEffect,
+    }
+  })
 }

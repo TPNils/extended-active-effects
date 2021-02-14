@@ -71,11 +71,9 @@ jobs:
         add: ./dist/module.json
         author_name: "GitHub Actions"
         author_email: noreply@github.com
-        branch: ${{github.ref}}
+        branch: master
         message: "feat: update placeholders"
         push: true
-    - name: Push the changes
-      run: git push origin ${{github.ref}}
 
     # Update the 'latest' release
     - name: Substitute Manifest and Download Links For Versioned Ones

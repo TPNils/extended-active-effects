@@ -64,6 +64,7 @@ jobs:
         prerelease: false
         token: ${{ secrets.GITHUB_TOKEN }}
         artifacts: './dist/module.json,./module.zip'
+        tag: ${{ steps.get-version.outputs.version }}
     - name: Initialize mandatory git config
       id: init-git-config
       run: | 
@@ -99,3 +100,4 @@ jobs:
         prerelease: false
         token: ${{ secrets.GITHUB_TOKEN }}
         artifacts: './dist/module.json, ./module.zip'
+        tag: latest

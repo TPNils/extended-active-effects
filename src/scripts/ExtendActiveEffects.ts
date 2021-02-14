@@ -219,7 +219,7 @@ export class ExtendActiveEffectService {
       form.setAttribute(`${flagScope}-drop`, true);
       form.addEventListener('drop', event => this._getDropItem(event).then(item => {
         const validateResult = activeEffect.validateItem(item);
-        if (!validateResult.valid) {
+        if (validateResult.valid === false) {
           ui.notifications.error(validateResult.errorMessage);
           return;
         }
@@ -301,7 +301,7 @@ export class ExtendActiveEffectService {
       const effectId = ownedItem.flags[flagScope].effectItemKey.replace(/\.[0-9]+$/g, '');
       const activeEffect = WrappedActiveEffect.fromParameters(parent.data._id, effectId);
       if (activeEffect.isEnabled()) {
-        const source = activeEffect.getSource();
+        const source = activeEffect.getParent();
         ui.notifications.error("This item is automatically assigned and can't be removed manually." + (source ? ` Source: ${source.data.name}` : ""));
         return false;
       }
@@ -314,7 +314,7 @@ export class ExtendActiveEffectService {
       const activeEffect = WrappedActiveEffect.fromParameters(parent.data._id, effectId);
       if (activeEffect.isEnabled()) {
         // TODO should update be supported? keeping track of charges
-        const source = activeEffect.getSource();
+        const source = activeEffect.getParent();
         ui.notifications.error("This item is automatically assigned and can't be updated manually." + (source ? ` Source: ${source.data.name} (${source.data.type})` : ""));
         return false;
       }

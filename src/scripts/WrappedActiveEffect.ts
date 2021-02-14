@@ -9,46 +9,61 @@ const filterValueTypes = ['null', 'string', 'number', 'boolean'];
 
 const flagScope = staticValues.moduleName;
 
+// Provide type safety
+type Parent = (Actor | Item) & {effects?: Map<string, ActiveEffect>};
+type ItemData = any;
+
+interface FilterValue {
+  field: string;
+  comparison: '=' | '!=' | '>' | '>=' | '<' | '<=';
+  value: string | boolean | number | null;
+}
+
+interface Filter {
+  groupType: "AND" | "OR", 
+  values: FilterValue[]
+}
+
 export class WrappedActiveEffect {
 
-  private _parentId: any;
-  private _activeEffectId: any;
-  private _activeEffect: any;
-  private _actor: any;
+  private parentInstance: Parent;
+  private parentId: string;
+  private activeEffect: ActiveEffect;
+  private activeEffectId: string;
 
-  public static fromParameters(parentId, activeEffectId) {
+  public static fromParameters(parentId: string, activeEffectId: string) {
     const wrappedActiveEffect = new WrappedActiveEffect();
-    wrappedActiveEffect._parentId = parentId;
-    wrappedActiveEffect._activeEffectId = activeEffectId;
+    wrappedActiveEffect.parentId = parentId;
+    wrappedActiveEffect.activeEffectId = activeEffectId;
     return wrappedActiveEffect;
   }
 
-  public static fromInstance(actor, activeEffect) {
+  public static fromInstance(parent: Parent, activeEffect: ActiveEffect) {
     const wrappedActiveEffect = new WrappedActiveEffect();
-    wrappedActiveEffect._actor = actor;
-    wrappedActiveEffect._activeEffect = activeEffect;
+    wrappedActiveEffect.parentInstance = parent;
+    wrappedActiveEffect.activeEffect = activeEffect;
     return wrappedActiveEffect;
   }
 
-  private _getActiveEffect() {
-    if (this._activeEffect !== undefined) {
-      return this._activeEffect;
+  private getActiveEffect(): ActiveEffect {
+    if (this.activeEffect !== undefined) {
+      return this.activeEffect;
     }
-    let parent = this._actor;
+    let parent = this.parentInstance;
     if (!parent) {
-      parent = game.actors.get(this._parentId);
-    }
-    if (!parent) {
-      parent = game.items.get(this._parentId);
+      parent = game.actors.get(this.parentId);
     }
     if (!parent) {
-      throw new Error('Could not find parent ' + this._parentId);
+      parent = game.items.get(this.parentId);
     }
-    return parent.effects.get(this._activeEffectId);
+    if (!parent) {
+      throw new Error('Could not find parent ' + this.parentId);
+    }
+    return parent.effects.get(this.activeEffectId);
   }
 
-  public getId(): string {
-    const effect = this._getActiveEffect();
+  public getActiveEffectId(): string {
+    const effect = this.getActiveEffect();
     if (!effect) {
       return null;
     }
@@ -56,15 +71,15 @@ export class WrappedActiveEffect {
   }
 
   public isEnabled(): boolean {
-    const effect = this._getActiveEffect();
+    const effect = this.getActiveEffect();
     if (!effect) {
       return false;
     }
     return !effect.data.disabled;
   }
 
-  public getSource(): any {
-    const effect = this._getActiveEffect();
+  public getParent(): Parent {
+    const effect = this.getActiveEffect();
     if (!effect || !effect.data || !effect.data.origin) {
       return null;
     }
@@ -73,9 +88,9 @@ export class WrappedActiveEffect {
       return null;
     }
 
-    let actor;
-    if (this._actor && this._actor.data._id === regResponse[1]) {
-      actor = this._actor;
+    let actor: Actor;
+    if (this.parentInstance && this.parentInstance.data._id === regResponse[1]) {
+      actor = this.parentInstance as Actor;
     } else {
       actor = game.actors.get(regResponse[1]);
     }
@@ -83,11 +98,8 @@ export class WrappedActiveEffect {
     return actor.items.get(regResponse[2]);
   }
 
-  /**
-   * @returns {{wrappedId: number, data: any}[]}, where data is the items that have been added
-   */
-  public readActiveEffectItems() {
-    const effect = this._getActiveEffect();
+  public readActiveEffectItems(): {wrappedId: number, data: ItemData}[] {
+    const effect = this.getActiveEffect();
     if (!effect) {
       return [];
     }
@@ -100,18 +112,8 @@ export class WrappedActiveEffect {
     return JSON.parse(JSON.stringify(items));
   }
 
-  /**
-   * @returns {{
-   *   groupType: "AND" | "OR", 
-   *   values: {
-   *     field: string,
-   *     comparison: '=', '!=',, '>', '>=', '<', '<=',
-   *     value: string | boolean | number | null
-   *   }[]
-   * } | null}
-   */
-  public readFilters() {
-    const effect = this._getActiveEffect();
+  public readFilters(): Filter | null {
+    const effect = this.getActiveEffect();
     if (!effect) {
       return null;
     }
@@ -125,13 +127,16 @@ export class WrappedActiveEffect {
       return true;
     }
 
-    const source = this.getSource();
+    const source = this.getParent();
     if (source === null) {
       // TODO is false correct? should only happen if it is deleted
       return false;
     }
 
-    const rawRollData = source.getRollData();
+    let rawRollData: any;
+    if (source instanceof Actor) {
+      rawRollData = source.getRollData();
+    }
     if (!rawRollData) {
       // When the item is not linked to an actor
       return false;
@@ -187,17 +192,8 @@ export class WrappedActiveEffect {
 
   /**
    * Validate if a filter is valid
-   * @param {{
-   *   groupType: "AND" | "OR", 
-   *   values: {
-   *     field: string,
-   *     comparison: '=', '!=',, '>', '>=', '<', '<=',
-   *     value: string | boolean | number | null
-   *   }[]
-   * } | null} item 
-   * @return {{valid: boolean, normalizedFilters: any, errorMessage?: string}}
    */
-  public validateFilters(filters) {
+  public validateFilters(filters: Filter): {valid: true, normalizedFilters: Filter} | {valid: false, normalizedFilters: null, errorMessage: string} {
     if (filters === null || filters === undefined) {
       return {valid: true, normalizedFilters: null}
     }
@@ -241,60 +237,42 @@ export class WrappedActiveEffect {
     return {valid: true, normalizedFilters: normalizedFilters}
   }
 
-  /**
-   * @param {{
-   *   groupType: "AND" | "OR", 
-   *   values: {
-   *     field: string,
-   *     comparison: '=', '!=',, '>', '>=', '<', '<=',
-   *     value: string | boolean | number | null
-   *   }[]
-   * } | null} filters
-   */
-  public async writeFilters(filters) {
+  public async writeFilters(filters: Filter | null): Promise<any> {
     /* Validate */
     const validateResult = this.validateFilters(filters);
-    if (!validateResult.valid) {
+    if (validateResult.valid === false) {
       throw new Error(validateResult.errorMessage);
     }
 
     /* Execute */
-    const activeEffect = this._getActiveEffect();
+    const activeEffect = this.getActiveEffect();
     return activeEffect.setFlag(flagScope, "filters", validateResult.normalizedFilters);
   }
 
   /**
    * Validate if an item can be added
-   * @param {*} item 
-   * @return {{valid: boolean, errorMessage?: string}}
    */
-  public validateItem(item) {
+  public validateItem(item: ItemData): {valid: true} | {valid: false, errorMessage: string} {
     if (!item || !Types.supportedItemTypes().includes(item.type)) {
       return {valid: false, errorMessage: 'Supported items: ' + Types.supportedItemTypes().sort().join(', ')};
     }
     return {valid: true};
   }
 
-  /**
-   * @param {*} item 
-   */
-  public async addItem(item) {
+  public async addItem(item: ItemData): Promise<any> {
     const validateResult = this.validateItem(item);
-    if (!validateResult.valid) {
+    if (validateResult.valid === false) {
       throw new Error(validateResult.errorMessage);
     }
     
-    const items = this.readActiveEffectItems();
+    const items: {wrappedId?: number, data: ItemData}[] = this.readActiveEffectItems();
     items.push({data: item});
     return this.writeActiveEffectItems(items);
   }
 
-  /**
-   * @param {{wrappedId: number, data?: any} | number} itemOrId 
-   */
-  public async deleteItem(itemOrId) {
-    let id;
-    if (Number.isInteger(itemOrId)) {
+  public async deleteItem(itemOrId: {wrappedId: number, data?: any} | number): Promise<any> {
+    let id: number;
+    if (typeof itemOrId === 'number') {
       id = itemOrId;
     } else {
       id = itemOrId.wrappedId;
@@ -303,16 +281,13 @@ export class WrappedActiveEffect {
     return this.writeActiveEffectItems(this.readActiveEffectItems().filter(item => item.wrappedId !== id));
   }
 
-  /**
-   * @param {{wrappedId?: number, data: any}[]} items 
-   */
-  public async writeActiveEffectItems(items) {
+  public async writeActiveEffectItems(items: {wrappedId?: number, data: ItemData}[]): Promise<any> {
     items = items.filter(item => Types.supportedItemTypes().includes(item.data.type));
     for (let i = 0; i < items.length; i++) {
       items[i].data = JSON.parse(JSON.stringify(items[i].data));
       delete items[i].data._id;
     }
-    const activeEffect = this._getActiveEffect();
+    const activeEffect = this.getActiveEffect();
     const nextInitialId = activeEffect.getFlag(flagScope, 'itemsNextId') || 0;
     let nextId = nextInitialId;
 

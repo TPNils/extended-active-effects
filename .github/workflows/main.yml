@@ -52,7 +52,7 @@ jobs:
         manifest: https://github.com/${{github.repository}}/releases/latest/download/module.json
         download: https://github.com/${{github.repository}}/releases/download/${{steps.get-version.outputs.version}}/module.zip
     - name: Zip Files
-      working-directory: ./dist #SORRY BUT YOU HAVE TO USE DIST JUST LIKE GET OVER IT OR FIGURE OUT A BETTER WAY
+      working-directory: ./dist
       run: zip -r ../module.zip ${{steps.get-includes.outputs.files}}
     - name: Create Version Release
       id: create_version_release
@@ -89,6 +89,9 @@ jobs:
         url: https://github.com/${{github.repository}}
         manifest: https://github.com/${{github.repository}}/releases/latest/download/module.json
         download: https://github.com/${{github.repository}}/releases/latest/download/module.zip
+    - name: Zip Files
+      working-directory: ./dist
+      run: zip -r ../module.zip ${{steps.get-includes.outputs.files}}
     - name: Update Latest Release
       id: create_latest_release
       uses: ncipollo/release-action@v1

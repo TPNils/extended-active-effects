@@ -1,9 +1,9 @@
 {
   "name": "extended-active-effects",
   "title": "Extended active effects",
-  "description": "Automate some stuff",
+  "description": "Extend what you can do with active effects, adding features and items",
   "author": "TPNils",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "minimumCoreVersion": "0.7.7",
 	"compatibleCoreVersion": "0.7.9",
   "systems": ["dnd5e"],

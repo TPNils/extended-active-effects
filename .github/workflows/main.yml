@@ -68,7 +68,7 @@ jobs:
       id: make-commit
       run: | 
         git add ./dist/module.json
-        git commit –message "feat: update placeholders"
+        git commit -m "feat: update placeholders"
         echo "::set-output name=commit::$(git rev-parse HEAD)"
 
     - name: Push the changes

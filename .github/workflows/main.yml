@@ -59,16 +59,10 @@ jobs:
         manifest: https://github.com/${{github.repository}}/releases/latest/download/module.json
         download: https://github.com/${{github.repository}}/releases/latest/download/module.zip
     – name: Initialize mandatory git config
-      run: |
-       git config user.name "GitHub Actions"
-       git config user.email noreply@github.com
+      run: git config user.name "GitHub Actions" && git config user.email noreply@github.com
     – name: Commit manifest files
       id: make-commit
-      run: |
-        git add ./dist/module.json
-        git commit –message "feat: update placeholders"
-        echo "::set-output name=commit::$(git rev-parse HEAD)"
-
+      run: git add ./dist/module.json && git commit –message "feat: update placeholders" && echo "::set-output name=commit::$(git rev-parse HEAD)"
     – name: Push the changes
       run: git push origin ${{github.ref}}
 

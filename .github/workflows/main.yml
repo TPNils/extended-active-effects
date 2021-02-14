@@ -65,17 +65,15 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         artifacts: './dist/module.json,./module.zip'
         tag: ${{ steps.get-version.outputs.version }}
-    - name: Initialize mandatory git config
-      id: init-git-config
-      run: | 
-        git config user.name "GitHub Actions"
-        git config user.email noreply@github.com
-    - name: Commit manifest files
-      id: make-commit
-      run: | 
-        git add ./dist/module.json
-        git commit -m "feat: update placeholders"
-        echo "::set-output name=commit::$(git rev-parse HEAD)"
+    - name: Commit manifest file
+      uses: EndBug/add-and-commit@v7
+      with:
+        add: ./dist/module.json
+        author_name: "GitHub Actions"
+        author_email: noreply@github.com
+        branch: ${{github.ref}}
+        message: "feat: update placeholders"
+        push: true
     - name: Push the changes
       run: git push origin ${{github.ref}}
 

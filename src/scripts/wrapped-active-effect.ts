@@ -1,4 +1,4 @@
-import { StaticValues } from "./static-values";
+import { StaticValues } from "./static-values.js";
 
 // Might be relevant for 'natural' equipment and weapons
 

@@ -73,7 +73,7 @@ export class PassiveEffect extends ActiveEffect {
 
     for (const passiveEffect of passiveEffectFlag.passiveEffects) {
       if (passiveEffect._id === this.data._id) {
-        filteredEffects.push({_id: this.data._id, ...data});
+        filteredEffects.push({...data, _id: this.data._id});
       } else {
         filteredEffects.push(passiveEffect);
       }
@@ -146,6 +146,32 @@ export class PassiveEffect extends ActiveEffect {
     }
 
     return passiveEffects;
+  }
+
+  /* Methods for testing */
+  public static clearPassiveEffects(entity: Entity<any>): Promise<any> {
+    if (!entity) {
+      entity = game.actors.get('yKRtF96GrpZH6Tv7');
+    }
+    return entity.unsetFlag(StaticValues.moduleName, 'passiveEffects');
+  }
+  public static convertActiveEffectsToPassive(entity?: Entity<any>): Promise<any> {
+    if (!entity) {
+      entity = game.actors.get('yKRtF96GrpZH6Tv7');
+    }
+    const passiveEffectFlag: PassiveEffectFlag = PassiveEffect.readFlag(entity);
+
+    if ((entity as any).effects) {
+      (entity as any).effects.forEach((effect: ActiveEffect, effectId: string) => {
+        passiveEffectFlag.passiveEffects.push({
+          ...effect.data,
+          disabled: false,
+          _id: `PassiveEffect.${passiveEffectFlag.nextId++}`
+        });
+      });
+    }
+
+    return this.writeFlag(entity, passiveEffectFlag);
   }
 
 }

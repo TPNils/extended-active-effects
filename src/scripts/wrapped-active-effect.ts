@@ -1,3 +1,4 @@
+import { PassiveEffect } from "./passive-effect.js";
 import { StaticValues } from "./static-values.js";
 
 // Might be relevant for 'natural' equipment and weapons
@@ -23,50 +24,67 @@ interface Filter {
   values: FilterValue[]
 }
 
+type EffectParent = {
+  actor?: Actor & {effects?: Collection<ActiveEffect>};
+  item?: Item & {effects?: Collection<ActiveEffect>};
+  actorId?: string;
+  itemId?: string;
+};
+
+type Effect = {
+  activeEffect?: ActiveEffect
+  activeEffectId?: string;
+  passiveEffect?: ActiveEffect
+  passiveEffectId?: string;
+};
+
 export class WrappedActiveEffect {
 
-  private parentInstance: Parent;
-  private parentId: string;
-  private activeEffect: ActiveEffect;
-  private activeEffectId: string;
-
-  public static fromParameters(parentId: string, activeEffectId: string) {
-    const wrappedActiveEffect = new WrappedActiveEffect();
-    wrappedActiveEffect.parentId = parentId;
-    wrappedActiveEffect.activeEffectId = activeEffectId;
-    return wrappedActiveEffect;
-  }
-
-  public static fromInstance(parent: Parent, activeEffect: ActiveEffect) {
-    const wrappedActiveEffect = new WrappedActiveEffect();
-    wrappedActiveEffect.parentInstance = parent;
-    wrappedActiveEffect.activeEffect = activeEffect;
-    return wrappedActiveEffect;
+  constructor(
+    private parent: EffectParent,
+    private effect: Effect
+  ) {
+    if (!parent) {
+      throw new Error('parent is required');
+    }
+    if (Object.keys(parent).length !== 1) {
+      throw new Error('parent must have 1 key');
+    }
+    if (!effect) {
+      throw new Error('effect is required');
+    }
+    if (Object.keys(effect).length !== 1) {
+      throw new Error('effect must have 1 key');
+    }
   }
 
   private getActiveEffect(): ActiveEffect {
-    if (this.activeEffect !== undefined) {
-      return this.activeEffect;
+    if (this.effect.activeEffect) {
+      return this.effect.activeEffect;
     }
-    let parent = this.parentInstance;
+    if (this.effect.passiveEffect) {
+      return this.effect.passiveEffect;
+    }
+    let parent: (Actor | Item) & {effects?: Collection<ActiveEffect>} = this.parent.actor;
     if (!parent) {
-      parent = game.actors.get(this.parentId);
+      parent = this.parent.item;
     }
     if (!parent) {
-      parent = game.items.get(this.parentId);
+      parent = game.actors.get(this.parent.actorId);
     }
     if (!parent) {
-      throw new Error('Could not find parent ' + this.parentId);
+      parent = game.items.get(this.parent.itemId);
     }
-    return parent.effects.get(this.activeEffectId);
-  }
-
-  public getActiveEffectId(): string {
-    const effect = this.getActiveEffect();
-    if (!effect) {
+    if (!parent) {
+      throw new Error('Could not find parent ' + JSON.stringify(this.parent));
+    }
+    if (this.effect.activeEffectId) {
+      return parent.effects.get(this.effect.activeEffectId);
+    } else if (this.effect.passiveEffectId) {
+      return PassiveEffect.getPassiveEffects(parent).get(this.effect.passiveEffectId);
+    } else {
       return null;
     }
-    return effect.data._id;
   }
 
   public isEnabled(): boolean {
@@ -77,7 +95,10 @@ export class WrappedActiveEffect {
     return !effect.data.disabled;
   }
 
-  public getParent(): Parent {
+  /**
+   * TODO better name, since it (correctly) only returns owned items
+   */
+  public getParent(): Actor | Item {
     const effect = this.getActiveEffect();
     if (!effect || !effect.data || !effect.data.origin) {
       return null;
@@ -88,8 +109,8 @@ export class WrappedActiveEffect {
     }
 
     let actor: Actor;
-    if (this.parentInstance && this.parentInstance.data._id === regResponse[1]) {
-      actor = this.parentInstance as Actor;
+    if (this.parent.actor && this.parent.actor.data._id === regResponse[1]) {
+      actor = this.parent.actor;
     } else {
       actor = game.actors.get(regResponse[1]);
     }

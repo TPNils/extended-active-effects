@@ -1,3 +1,4 @@
+import { PassiveEffect, PassiveEffectData } from './passive-effect.js';
 import { StaticValues } from './static-values.js';
 import { WrappedActiveEffect } from './wrapped-active-effect.js';
 
@@ -89,7 +90,10 @@ export class ExtendActiveEffectService {
   private _hooks = [];
 
   private _onRenderActiveEffectConfig(controller: any, html: HTMLElement, activeEffectContainer: any): void {
-    const activeEffect = WrappedActiveEffect.fromParameters(controller.object.parent.data._id, activeEffectContainer.effect._id);
+    const activeEffect = new WrappedActiveEffect(
+      controller.object.parent instanceof Actor ? {actorId: controller.object.parent.data._id} : {item: controller.object.parent.data._id},
+      {activeEffectId: activeEffectContainer.effect._id}
+    )
 
     /* Navigation */
     const renderNavigation = () => {
@@ -298,7 +302,7 @@ export class ExtendActiveEffectService {
   private _onPreDeleteOwnedItem(parent: Actor, ownedItem: any, options, userId: string): boolean {
     if (ownedItem.flags && ownedItem.flags[flagScope] && ownedItem.flags[flagScope].effectItemKey) {
       const effectId = ownedItem.flags[flagScope].effectItemKey.replace(/\.[0-9]+$/g, '');
-      const activeEffect = WrappedActiveEffect.fromParameters(parent.data._id, effectId);
+      const activeEffect = new WrappedActiveEffect({actorId: parent.data._id}, {activeEffectId: effectId})
       if (activeEffect.isEnabled()) {
         const source = activeEffect.getParent();
         ui.notifications.error("This item is automatically assigned and can't be removed manually." + (source ? ` Source: ${source.data.name}` : ""));
@@ -310,7 +314,7 @@ export class ExtendActiveEffectService {
   private _onPreUpdateOwnedItem(parent: Actor, ownedItem: any, difference: Partial<Item<any>>, options, userId: string): boolean {
     if (ownedItem.flags && ownedItem.flags[flagScope] && ownedItem.flags[flagScope].effectItemKey) {
       const effectId = ownedItem.flags[flagScope].effectItemKey.replace(/\.[0-9]+$/g, '');
-      const activeEffect = WrappedActiveEffect.fromParameters(parent.data._id, effectId);
+      const activeEffect = new WrappedActiveEffect({actorId: parent.data._id}, {activeEffectId: effectId})
       if (activeEffect.isEnabled()) {
         // TODO should update be supported? keeping track of charges
         const source = activeEffect.getParent();
@@ -348,7 +352,15 @@ export class ExtendActiveEffectService {
   private _calcApplyActorItems(actor: Actor): void {
     const upsertItemsByKey = new Map();
     (actor as any).effects.forEach((effect: ActiveEffect, effectId: string) => {
-      const activeEffect = WrappedActiveEffect.fromInstance(actor, effect);
+      const activeEffect = new WrappedActiveEffect({actor: actor}, {activeEffect: effect});
+      if (activeEffect.isEnabled() && activeEffect.matchesFilters()) {
+        for (const item of activeEffect.readActiveEffectItems()) {
+          upsertItemsByKey.set(effectId + '.' + item.wrappedId, item.data);
+        }
+      }
+    });
+    PassiveEffect.getPassiveEffects(actor).forEach((effect: PassiveEffect, effectId: string) => {
+      const activeEffect = new WrappedActiveEffect({actor: actor}, {passiveEffect: effect});
       if (activeEffect.isEnabled() && activeEffect.matchesFilters()) {
         for (const item of activeEffect.readActiveEffectItems()) {
           upsertItemsByKey.set(effectId + '.' + item.wrappedId, item.data);

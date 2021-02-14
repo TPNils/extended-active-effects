@@ -59,7 +59,7 @@ export class PassiveEffect extends ActiveEffect {
       throw new Error('PassiveEffect already exists');
     }
     const passiveEffectFlag: PassiveEffectFlag = PassiveEffect.readFlag(this.parent);
-    this.data._id = `${passiveEffectFlag.nextId++}`;
+    this.data._id = `PassiveEffect.${passiveEffectFlag.nextId++}`;
     passiveEffectFlag.passiveEffects.push(this.data);
     return PassiveEffect.writeFlag(this.parent, passiveEffectFlag);
   }
@@ -137,12 +137,12 @@ export class PassiveEffect extends ActiveEffect {
     return entity.setFlag(StaticValues.moduleName, 'passiveEffects', flag);
   }
 
-  public static getPassiveEffects(entity: Entity<any>): PassiveEffect[] {
+  public static getPassiveEffects(entity: Entity<any>): Collection<PassiveEffect> {
     const passiveEffectFlag: PassiveEffectFlag = this.readFlag(entity);
-    const passiveEffects: PassiveEffect[] = [];
+    const passiveEffects: Collection<PassiveEffect> = new Collection([]);
 
     for (const passiveEffect of passiveEffectFlag.passiveEffects) {
-      passiveEffects.push(new PassiveEffect(passiveEffect, entity));
+      passiveEffects.set(passiveEffect._id, new PassiveEffect(passiveEffect, entity));
     }
 
     return passiveEffects;
@@ -160,12 +160,12 @@ export function registerPassiveEffects(): void {
   CONFIG.Actor.entityClass.prototype.applyActiveEffects = function (this: Actor<any>) {
     const originalEffects = this.effects;
     const activeAndPassiveEffects: Collection<ActiveEffect> = new Collection([]);
-    originalEffects.forEach(effect =>  {
+    originalEffects.forEach(effect => {
       activeAndPassiveEffects.set(effect.data._id, effect);
     });
-    for (const effect of PassiveEffect.getPassiveEffects(this)) {
-      activeAndPassiveEffects.set(`PassiveEffect.${effect.data._id}`, effect);
-    }
+    PassiveEffect.getPassiveEffects(this).forEach(effect => {
+      activeAndPassiveEffects.set(effect.data._id, effect);
+    });
     this.effects = activeAndPassiveEffects;
     originalApplyActiveEffects.call(this);
     this.effects = originalEffects;

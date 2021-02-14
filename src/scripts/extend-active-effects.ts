@@ -1,8 +1,7 @@
-import { staticValues } from './static-values.js';
-import { Types } from './Types.js';
-import { WrappedActiveEffect } from './WrappedActiveEffect.js';
+import { StaticValues } from './static-values.js';
+import { WrappedActiveEffect } from './wrapped-active-effect.js';
 
-const flagScope = staticValues.moduleName;
+const flagScope = StaticValues.moduleName;
 
 export class ExtendActiveEffectService {
   /* public */
@@ -180,9 +179,9 @@ export class ExtendActiveEffectService {
         itemContainer.appendChild(deleteElement);
         itemEntry.appendChild(itemContainer);
         
-        if (Types.featureItemTypes().includes(item.data.type)) {
+        if (StaticValues.featureItemTypes.includes(item.data.type)) {
           featuresListElement.appendChild(itemEntry);
-        } else if (Types.spellItemTypes().includes(item.data.type)) {
+        } else if (StaticValues.spellItemTypes.includes(item.data.type)) {
           spellListElement.appendChild(itemEntry);
         }
       }
@@ -228,9 +227,9 @@ export class ExtendActiveEffectService {
 
           // Focus to the drop tab
           let shouldBeActiveType;
-          if (Types.featureItemTypes().includes(item.type)) {
+          if (StaticValues.featureItemTypes.includes(item.type)) {
             shouldBeActiveType = 'features';
-          } else if (Types.spellItemTypes().includes(item.type)) {
+          } else if (StaticValues.spellItemTypes.includes(item.type)) {
             shouldBeActiveType = 'spells';
           }
 
@@ -253,7 +252,7 @@ export class ExtendActiveEffectService {
   }
 
   private _onCreateActiveEffect(parent, activeEffect, options, userId: string): void {
-    if (!Types.supportedAutoApplyParentTypes().includes(parent.data.type)) {
+    if (!StaticValues.supportedAutoApplyParentTypes.includes(parent.data.type)) {
       return;
     }
     const actorData = JSON.parse(JSON.stringify(parent.data));
@@ -262,7 +261,7 @@ export class ExtendActiveEffectService {
     this._calcApplyActorItems(new Actor(actorData, null));
   }
   private _onUpdateActiveEffect(parent, activeEffect, options, userId: string): void {
-    if (!Types.supportedAutoApplyParentTypes().includes(parent.data.type)) {
+    if (!StaticValues.supportedAutoApplyParentTypes.includes(parent.data.type)) {
       return;
     }
     const actorData = JSON.parse(JSON.stringify(parent.data));
@@ -277,7 +276,7 @@ export class ExtendActiveEffectService {
     this._calcApplyActorItems(new Actor(actorData, null));
   }
   private _onDeleteActiveEffect(parent, activeEffect, options, userId: string): void {
-    if (!Types.supportedAutoApplyParentTypes().includes(parent.data.type)) {
+    if (!StaticValues.supportedAutoApplyParentTypes.includes(parent.data.type)) {
       return;
     }
     const actorData = JSON.parse(JSON.stringify(parent.data));
@@ -286,7 +285,7 @@ export class ExtendActiveEffectService {
     this._calcApplyActorItems(new Actor(actorData, null));
   }
   private  _onUpdateActor(actor: Actor<any>, difference: Partial<Actor.Data<any>>, options, userId: string): void {
-    if (!Types.supportedAutoApplyParentTypes().includes(actor.data.type)) {
+    if (!StaticValues.supportedAutoApplyParentTypes.includes(actor.data.type)) {
       return;
     }
 
@@ -322,7 +321,7 @@ export class ExtendActiveEffectService {
     return true;
   }
   private _onUpdateOwnedItem(parent: Actor, ownedItem: Item<any>, difference, options: Partial<Item<any>>, userId: string): void {
-    if (!Types.supportedAutoApplyParentTypes().includes(parent.data.type)) {
+    if (!StaticValues.supportedAutoApplyParentTypes.includes(parent.data.type)) {
       return;
     }
     const actorData = JSON.parse(JSON.stringify(parent.data));
@@ -337,7 +336,7 @@ export class ExtendActiveEffectService {
     this._calcApplyActorItems(new Actor(actorData, null));
   }
   private _onDeleteOwnedItem(parent: Actor, ownedItem: Item<any>, options: Partial<Item<any>>, userId: string): void {
-    if (!Types.supportedAutoApplyParentTypes().includes(parent.data.type)) {
+    if (!StaticValues.supportedAutoApplyParentTypes.includes(parent.data.type)) {
       return;
     }
     const actorData = JSON.parse(JSON.stringify(parent.data));

@@ -1,5 +1,4 @@
-import { staticValues } from "./static-values";
-import { Types } from "./Types";
+import { StaticValues } from "./static-values";
 
 // Might be relevant for 'natural' equipment and weapons
 
@@ -7,7 +6,7 @@ const filterGroupTypes = ['AND', 'OR'];
 const filterComparisonTypes = ['=', '!=',, '>', '>=', '<', '<='];
 const filterValueTypes = ['null', 'string', 'number', 'boolean'];
 
-const flagScope = staticValues.moduleName;
+const flagScope = StaticValues.moduleName;
 
 // Provide type safety
 type Parent = (Actor | Item) & {effects?: Map<string, ActiveEffect>};
@@ -253,8 +252,8 @@ export class WrappedActiveEffect {
    * Validate if an item can be added
    */
   public validateItem(item: ItemData): {valid: true} | {valid: false, errorMessage: string} {
-    if (!item || !Types.supportedItemTypes().includes(item.type)) {
-      return {valid: false, errorMessage: 'Supported items: ' + Types.supportedItemTypes().sort().join(', ')};
+    if (!item || !StaticValues.supportedItemTypes.includes(item.type)) {
+      return {valid: false, errorMessage: 'Supported items: ' + StaticValues.supportedItemTypes.sort().join(', ')};
     }
     return {valid: true};
   }
@@ -282,7 +281,7 @@ export class WrappedActiveEffect {
   }
 
   public async writeActiveEffectItems(items: {wrappedId?: number, data: ItemData}[]): Promise<any> {
-    items = items.filter(item => Types.supportedItemTypes().includes(item.data.type));
+    items = items.filter(item => StaticValues.supportedItemTypes.includes(item.data.type));
     for (let i = 0; i < items.length; i++) {
       items[i].data = JSON.parse(JSON.stringify(items[i].data));
       delete items[i].data._id;

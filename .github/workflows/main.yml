@@ -31,24 +31,54 @@ jobs:
     #   id: build
     #   run: node run build
 
-    # Get the version from 'module.json'
+    # Read info from 'module.json'
     - name: Get Version
       shell: bash
       id: get-version
       run: echo "::set-output name=version::$(node ./.github/workflows/get-version.js)"
-
-    # Get the name from 'module.json'
     - name: Get Includes
       shell: bash
       id: get-includes
       run: echo "::set-output name=files::$(node ./.github/workflows/get-includes.js)"
-
-    # create a zip file with all files required by the module to add to the release
+      
+    # Create a specific release
+    - name: Substitute Manifest and Download Links For Versioned Ones
+      id: sub_manifest_link_version
+      uses: microsoft/variable-substitution@v1
+      with:
+        files: './dist/module.json'
+      env:
+        url: https://github.com/${{github.repository}}
+        manifest: https://github.com/${{github.repository}}/releases/latest/download/module.json
+        download: https://github.com/${{github.repository}}/releases/download/${{steps.get-version.outputs.version}}/module.zip
     - name: Zip Files
       working-directory: ./dist #SORRY BUT YOU HAVE TO USE DIST JUST LIKE GET OVER IT OR FIGURE OUT A BETTER WAY
       run: zip -r ../module.zip ${{steps.get-includes.outputs.files}}
+    - name: Create Version Release
+      id: create_version_release
+      uses: ncipollo/release-action@v1
+      with:
+        allowUpdates: true # set this to false if you want to prevent updating existing releases
+        name: Release ${{ steps.get-version.outputs.version }}
+        draft: false
+        prerelease: false
+        token: ${{ secrets.GITHUB_TOKEN }}
+        artifacts: './dist/module.json,./module.zip'
+    - name: Initialize mandatory git config
+      id: init-git-config
+      run: | 
+        git config user.name "GitHub Actions"
+        git config user.email noreply@github.com
+    - name: Commit manifest files
+      id: make-commit
+      run: | 
+        git add ./dist/module.json
+        git commit -m "feat: update placeholders"
+        echo "::set-output name=commit::$(git rev-parse HEAD)"
+    - name: Push the changes
+      run: git push origin ${{github.ref}}
 
-    #Useful only for the template so we can leave the manifest and download urls empty
+    # Update the 'latest' release
     - name: Substitute Manifest and Download Links For Versioned Ones
       id: sub_manifest_link_latest
       uses: microsoft/variable-substitution@v1
@@ -58,23 +88,6 @@ jobs:
         url: https://github.com/${{github.repository}}
         manifest: https://github.com/${{github.repository}}/releases/latest/download/module.json
         download: https://github.com/${{github.repository}}/releases/latest/download/module.zip
-
-    - name: Initialize mandatory git config
-      run: | 
-        git config user.name "GitHub Actions"
-        git config user.email noreply@github.com
-
-    - name: Commit manifest files
-      id: make-commit
-      run: | 
-        git add ./dist/module.json
-        git commit -m "feat: update placeholders"
-        echo "::set-output name=commit::$(git rev-parse HEAD)"
-
-    - name: Push the changes
-      run: git push origin ${{github.ref}}
-
-    # Update the 'latest' release
     - name: Update Latest Release
       id: create_latest_release
       uses: ncipollo/release-action@v1
@@ -86,17 +99,3 @@ jobs:
         prerelease: false
         token: ${{ secrets.GITHUB_TOKEN }}
         artifacts: './dist/module.json, ./module.zip'
-        tag: latest
-    
-    # Create a release for this specific version
-    - name: Create Version Release
-      id: create_version_release
-      uses: ncipollo/release-action@v1
-      with:
-        allowUpdates: true # set this to false if you want to prevent updating existing releases
-        name: Release ${{ steps.get-version.outputs.version }}
-        draft: false
-        prerelease: false
-        token: ${{ secrets.GITHUB_TOKEN }}
-        artifacts: './dist/module.json,./module.zip'
-        tag: ${{ steps.get-version.outputs.version }}

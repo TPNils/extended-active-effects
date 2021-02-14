@@ -292,9 +292,25 @@ export class ExtendActiveEffectService {
     if (!StaticValues.supportedAutoApplyParentTypes.includes(actor.data.type)) {
       return;
     }
-
+    
+    let recalc = false;
+    if (!recalc) {
+      recalc = !options.diff;
+    }
     // If the diff tracker is on, don't update if the item's didn't update
-    if (!options.diff || difference.items) {
+    if (!recalc) {
+      recalc = !!difference.items;
+    }
+    if (!recalc && difference?.flags[StaticValues.moduleName]) {
+      if (difference?.flags[StaticValues.moduleName].passiveEffects) {
+        recalc = true;
+      } else if (difference?.flags[StaticValues.moduleName]['-=passiveEffects'] !== undefined) {
+        recalc = true;
+      }
+    }
+
+    console.log(recalc, actor);
+    if (recalc) {
       this._calcApplyActorItems(actor);
     }
   }

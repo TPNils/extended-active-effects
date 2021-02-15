@@ -42,6 +42,10 @@ export class ExtendActiveEffectService {
         callback: this._onPreUpdateOwnedItem.bind(this)
       },
       {
+        name: 'createOwnedItem',
+        callback: this._onCreateOwnedItem.bind(this)
+      },
+      {
         name: 'deleteOwnedItem',
         callback: this._onDeleteOwnedItem.bind(this)
       },
@@ -309,7 +313,6 @@ export class ExtendActiveEffectService {
       }
     }
 
-    console.log(recalc, actor);
     if (recalc) {
       this._calcApplyActorItems(actor);
     }
@@ -340,7 +343,16 @@ export class ExtendActiveEffectService {
     }
     return true;
   }
-  private _onUpdateOwnedItem(parent: Actor, ownedItem: Item<any>, difference, options: Partial<Item<any>>, userId: string): void {
+  private _onCreateOwnedItem(parent: Actor, ownedItem: Item.Data<any>, difference, options: Partial<Item<any>>, userId: string): void {
+    if (!StaticValues.supportedAutoApplyParentTypes.includes(parent.data.type)) {
+      return;
+    }
+    const actorData = JSON.parse(JSON.stringify(parent.data));
+    actorData.items = actorData.items ? actorData.items : [];
+    actorData.items.push(ownedItem);
+    this._calcApplyActorItems(new Actor(actorData, null));
+  }
+  private _onUpdateOwnedItem(parent: Actor, ownedItem: Item.Data<any>, difference, options: Partial<Item<any>>, userId: string): void {
     if (!StaticValues.supportedAutoApplyParentTypes.includes(parent.data.type)) {
       return;
     }
@@ -355,7 +367,7 @@ export class ExtendActiveEffectService {
     });
     this._calcApplyActorItems(new Actor(actorData, null));
   }
-  private _onDeleteOwnedItem(parent: Actor, ownedItem: Item<any>, options: Partial<Item<any>>, userId: string): void {
+  private _onDeleteOwnedItem(parent: Actor, ownedItem: Item.Data<any>, options: Partial<Item<any>>, userId: string): void {
     if (!StaticValues.supportedAutoApplyParentTypes.includes(parent.data.type)) {
       return;
     }

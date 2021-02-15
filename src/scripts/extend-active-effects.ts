@@ -91,7 +91,7 @@ export class ExtendActiveEffectService {
 
   private _onRenderActiveEffectConfig(controller: any, html: HTMLElement, activeEffectContainer: any): void {
     const activeEffect = new WrappedActiveEffect(
-      controller.object.parent instanceof Actor ? {actorId: controller.object.parent.data._id} : {item: controller.object.parent.data._id},
+      controller.object.parent instanceof Actor ? {actorId: controller.object.parent.data._id} : {itemId: controller.object.parent.data._id},
       {activeEffectId: activeEffectContainer.effect._id}
     )
 

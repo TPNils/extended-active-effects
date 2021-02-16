@@ -234,29 +234,6 @@ export class PassiveEffect extends ActiveEffect {
 
 
 export class PassiveEffectService {
-  private originalActorApplyActiveEffects: () => void;
-  
-  public injectIntoActor(): void {
-    if (this.originalActorApplyActiveEffects) {
-      throw new Error('Already registered');
-    }
-    this.originalActorApplyActiveEffects = CONFIG.Actor.entityClass.prototype.applyActiveEffects;
-    const service = this;
-
-    CONFIG.Actor.entityClass.prototype.applyActiveEffects = function (this: Actor<any>) {
-      const originalEffects = this.effects;
-      const activeAndPassiveEffects: Collection<ActiveEffect> = new Collection([]);
-      originalEffects.forEach(effect => {
-        activeAndPassiveEffects.set(effect.data._id, effect);
-      });
-      PassiveEffect.getPassiveEffects(this).forEach(effect => {
-        activeAndPassiveEffects.set(effect.data._id, effect);
-      });
-      this.effects = activeAndPassiveEffects;
-      service.originalActorApplyActiveEffects.call(this);
-      this.effects = originalEffects;
-    }
-  }
 
   public onOwnedItemCreate(parent: Actor, ownedItemData: Item.Data<any>, options: any, userId: string): void {
     PassiveEffect.calcPassiveEffectsFromEmbeded(parent);
@@ -300,8 +277,6 @@ export function init(): void {
   Hooks.on('updateActor', passiveEffectService.onUpdateActor.bind(passiveEffectService));
 
   Hooks.on('init', () => {
-    passiveEffectService.injectIntoActor();
-    
     game[StaticValues.moduleName] = {
       PassiveEffect: PassiveEffect,
     }

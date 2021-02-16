@@ -124,29 +124,6 @@ export class WrappedActiveEffect {
     return readFilter(effect.getFlag(flagScope, 'filters')).normalizedFilters;
   }
 
-  public matchesFilters(): boolean {
-    const filters = this.readFilters();
-    if (filters == null) {
-      return true;
-    }
-
-    const source = this.getParent();
-    if (source === null) {
-      // TODO is false correct? should only happen if it is deleted
-      return false;
-    }
-
-    let rawRollData: any;
-    if (source instanceof Actor) {
-      rawRollData = source.getRollData();
-    }
-    if (!rawRollData) {
-      // When the item is not linked to an actor
-      return false;
-    }
-    return filters.matches(flattenObject(rawRollData));
-  }
-
   public async writeFilters(filterGroup: Filter.Group | null): Promise<any> {
     /* Validate */
     const validateResult = readFilter(filterGroup);

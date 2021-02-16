@@ -225,14 +225,16 @@ export class ExtendActiveEffectService {
         }
       }
 
-      const addItemListItem = document.createElement('li');
-      const addItemElement = document.createElement('div');
-      addItemElement.className = 'add';
-      addItemElement.textContent = 'Drag & Drop';
-      addItemListItem.appendChild(addItemElement);
-      
-      featuresListElement.children.push(addItemListItem.cloneNode(true));
-      spellListElement.children.push(addItemListItem.cloneNode(true));
+      const dragAndDropItem: CreateElementParam = {
+        tagName: 'li',
+        children: [{
+          tagName: 'div',
+          classes: ['add'],
+          children: [{text: 'Drag & Drop'}]
+        }]
+      };
+      featuresListElement.children.push(dragAndDropItem);
+      spellListElement.children.push(dragAndDropItem);
 
       featuresSection.appendChild(UtilsHtml.createElement(featuresListElement));
       spellsSection.appendChild(UtilsHtml.createElement(spellListElement));

@@ -2,12 +2,6 @@ import { Filter, readFilter } from "./filter.js";
 import { PassiveEffect } from "./passive-effect.js";
 import { StaticValues } from "./static-values.js";
 
-// Might be relevant for 'natural' equipment and weapons
-
-const filterGroupTypes = ['AND', 'OR'];
-const filterComparisonTypes = ['=', '!=',, '>', '>=', '<', '<='];
-const filterValueTypes = ['null', 'string', 'number', 'boolean'];
-
 const flagScope = StaticValues.moduleName;
 
 // Provide type safety

@@ -1,4 +1,4 @@
-import { Filter, readFilter } from "./entity-filter.js";
+import { Filter, readFilter } from "./filter.js";
 import { PassiveEffect } from "./passive-effect.js";
 import { StaticValues } from "./static-values.js";
 

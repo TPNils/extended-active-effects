@@ -1,5 +1,6 @@
 import { PassiveEffect, PassiveEffectData } from './passive-effect.js';
 import { StaticValues } from './static-values.js';
+import { CreateElementParam, UtilsHtml } from './utils-html.js';
 import { WrappedActiveEffect } from './wrapped-active-effect.js';
 
 const flagScope = StaticValues.moduleName;
@@ -144,53 +145,83 @@ export class ExtendActiveEffectService {
       if (currentFeaturesSection) {
         featuresSection = currentFeaturesSection.cloneNode(false);
       } else {
-        featuresSection = document.createElement('section');
-        featuresSection.className = 'tab';
-        featuresSection.setAttribute('data-tab', 'features');
+        featuresSection = UtilsHtml.createElement({
+          tagName: 'section',
+          classes: ['tab'],
+          attributes: {
+            'data-tab': 'features'
+          }
+        });
       }
-      const featuresListElement = document.createElement('ol');
-      featuresListElement.className = 'extended-active-effects';
       
       const currentSpellSection = html[0].querySelector('form section[data-tab="spells"]');
       let spellsSection;
       if (currentSpellSection) {
         spellsSection = currentSpellSection.cloneNode(false);
       } else {
-        spellsSection = document.createElement('section');
-        spellsSection.className = 'tab';
-        spellsSection.setAttribute('data-tab', 'spells');
+        spellsSection = UtilsHtml.createElement({
+          tagName: 'section',
+          classes: ['tab'],
+          attributes: {
+            'data-tab': 'spells'
+          }
+        });
       }
-      const spellListElement = document.createElement('ol');
-      spellListElement.className = 'extended-active-effects';
+      const featuresListElement: CreateElementParam = {
+        tagName: 'ol',
+        classes: ['extended-active-effects'],
+        children: []
+      };
+      const spellListElement: CreateElementParam = {
+        tagName: 'ol',
+        classes: ['extended-active-effects'],
+        children: []
+      };
   
       for (const item of activeEffect.readActiveEffectItems()) {
-        const itemContainer = document.createElement('div');
-        itemContainer.className = 'container';
-        const imageElement = document.createElement('img');
-        imageElement.className = 'item-image';
-        imageElement.src = item.data.img;
-        const nameElement = document.createElement('h4');
-        nameElement.className = 'name';
-        nameElement.textContent = item.data.name;
-        const deleteElement = document.createElement('a');
-        const deleteIcon = document.createElement('i');
-        deleteIcon.className = 'fas fa-trash';
-        deleteIcon.addEventListener('click', () => {
-          activeEffect.deleteItem(item).then(() => renderBody());
-        });
-        
-        const itemEntry = document.createElement('li');
-  
-        deleteElement.appendChild(deleteIcon);
-        itemContainer.appendChild(imageElement);
-        itemContainer.appendChild(nameElement);
-        itemContainer.appendChild(deleteElement);
-        itemEntry.appendChild(itemContainer);
+        const itemEntry: CreateElementParam = {
+          tagName: 'li',
+          children: [
+            {
+              tagName: 'div',
+              classes: ['container'],
+              children: [
+                {
+                  tagName: 'img', 
+                  classes: ['item-image'], 
+                  attributes: {'src': item.data.img}
+                },
+                {
+                  tagName: 'h4', 
+                  classes: ['name'], 
+                  children: [
+                    {text: item.data.name}
+                  ]
+                },
+                {
+                  tagName: 'a', 
+                  children: [
+                    {
+                      tagName: 'i',
+                      classes: ['fas', 'fa-trash'],
+                      listeners: [
+                        {
+                          event: 'click', 
+                          listener: () => activeEffect.deleteItem(item).then(() => renderBody())
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        };
         
         if (StaticValues.featureItemTypes.includes(item.data.type)) {
-          featuresListElement.appendChild(itemEntry);
+          featuresListElement.children.push(itemEntry);
         } else if (StaticValues.spellItemTypes.includes(item.data.type)) {
-          spellListElement.appendChild(itemEntry);
+          spellListElement.children.push(itemEntry);
         }
       }
 
@@ -200,11 +231,11 @@ export class ExtendActiveEffectService {
       addItemElement.textContent = 'Drag & Drop';
       addItemListItem.appendChild(addItemElement);
       
-      featuresListElement.appendChild(addItemListItem.cloneNode(true));
-      spellListElement.appendChild(addItemListItem.cloneNode(true));
+      featuresListElement.children.push(addItemListItem.cloneNode(true));
+      spellListElement.children.push(addItemListItem.cloneNode(true));
 
-      featuresSection.appendChild(featuresListElement);
-      spellsSection.appendChild(spellListElement);
+      featuresSection.appendChild(UtilsHtml.createElement(featuresListElement));
+      spellsSection.appendChild(UtilsHtml.createElement(spellListElement));
 
       if (currentFeaturesSection) {
         currentFeaturesSection.remove();

@@ -1,3 +1,4 @@
+import { Filter, readFilter } from "./entity-filter.js";
 import { PassiveEffect } from "./passive-effect.js";
 import { StaticValues } from "./static-values.js";
 
@@ -10,19 +11,7 @@ const filterValueTypes = ['null', 'string', 'number', 'boolean'];
 const flagScope = StaticValues.moduleName;
 
 // Provide type safety
-type Parent = (Actor | Item) & {effects?: Map<string, ActiveEffect>};
 type ItemData = any;
-
-interface FilterValue {
-  field: string;
-  comparison: '=' | '!=' | '>' | '>=' | '<' | '<=';
-  value: string | boolean | number | null;
-}
-
-interface Filter {
-  groupType: "AND" | "OR", 
-  values: FilterValue[]
-}
 
 type EffectParent = {
   actor?: Actor & {effects?: Collection<ActiveEffect>};
@@ -138,12 +127,12 @@ export class WrappedActiveEffect {
       return null;
     }
 
-    return this.validateFilters(effect.getFlag(flagScope, 'filters')).normalizedFilters;
+    return readFilter(effect.getFlag(flagScope, 'filters')).normalizedFilters;
   }
 
   public matchesFilters(): boolean {
     const filters = this.readFilters();
-    if (filters == null || filters.values.length === 0) {
+    if (filters == null) {
       return true;
     }
 
@@ -161,105 +150,12 @@ export class WrappedActiveEffect {
       // When the item is not linked to an actor
       return false;
     }
-    const rollData = flattenObject(rawRollData);
-    let foundAnyMatch = false;
-    for (const filterValue of filters.values) {
-      let sourceValue = rollData[filterValue.field];
-      if (sourceValue === "") {
-        sourceValue = null;
-      }
-      let matches = false;
-      switch (filterValue.comparison) {
-        case '=':
-          matches = sourceValue == filterValue.value;
-          break;
-        case '!=':
-          matches = sourceValue != filterValue.value;
-          break;
-        case '>=':
-          matches = sourceValue >= filterValue.value;
-          break;
-        case '>':
-          matches = sourceValue > filterValue.value;
-          break;
-        case '<=':
-          matches = sourceValue <= filterValue.value;
-          break;
-        case '<':
-          matches = sourceValue < filterValue.value;
-          break;
-      }
-
-      if (matches) {
-        foundAnyMatch = matches;
-      }
-
-      if (filters.groupType === 'AND' && !matches) {
-        return false;
-      } else if (filters.groupType === 'OR' && matches) {
-        return true;
-      }
-    }
-
-    if (filters.groupType === 'AND') {
-      // No mismatches found
-      return true;
-    } else if (filters.groupType === 'OR' && foundAnyMatch) {
-      // No matches found
-      return false;
-    }
+    return filters.matches(flattenObject(rawRollData));
   }
 
-  /**
-   * Validate if a filter is valid
-   */
-  public validateFilters(filters: Filter): {valid: true, normalizedFilters: Filter} | {valid: false, normalizedFilters: null, errorMessage: string} {
-    if (filters === null || filters === undefined) {
-      return {valid: true, normalizedFilters: null}
-    }
-
-    const normalizedFilters: any = {};
-    if (typeof filters !== 'object' || Array.isArray(filters)) {
-      return {valid: false, normalizedFilters: null, errorMessage: "Invalid: Filter needs to be an object: " + JSON.stringify(filters)};
-    }
-    if (!filterGroupTypes.includes(filters.groupType)) {
-      return {valid: false, normalizedFilters: null, errorMessage: "Invalid filter.groupType: " + JSON.stringify(filters)};
-    }
-    normalizedFilters.groupType = filters.groupType;
-    if (!Array.isArray(filters.values)) {
-      return {valid: false, normalizedFilters: null, errorMessage: "Invalid filter.values: " + JSON.stringify(filters)};
-    }
-    normalizedFilters.values = [];
-
-    for (let i = 0; i < filters.values.length; i++) {
-      const normalizedValue = {
-        field: filters.values[i].field,
-        comparison: filters.values[i].comparison,
-        value: filters.values[i].value
-      };
-      if (normalizedValue.value === undefined) {
-        normalizedValue.value = null;
-      }
-      if (normalizedValue.value === "") {
-        normalizedValue.value = null;
-      }
-      if (typeof normalizedValue.field !== 'string') {
-        return {valid: false, normalizedFilters: null, errorMessage: `"Invalid filter.values[${i}].field: "` + JSON.stringify(filters)};
-      }
-      if (!filterComparisonTypes.includes(normalizedValue.comparison)) {
-        return {valid: false, normalizedFilters: null, errorMessage: `"Invalid filter.values[${i}].comparison: "` + JSON.stringify(filters)};
-      }
-      if (!filterValueTypes.includes(typeof normalizedValue.value)) {
-        return {valid: false, normalizedFilters: null, errorMessage: `"Invalid filter.values[${i}].value: "` + JSON.stringify(filters)};
-      }
-      normalizedFilters.values.push(normalizedValue);
-    }
-    return {valid: true, normalizedFilters: normalizedFilters}
-  }
-
-  public async writeFilters(filters: Filter | null): Promise<any> {
+  public async writeFilters(filterGroup: Filter.Group | null): Promise<any> {
     /* Validate */
-    const validateResult = this.validateFilters(filters);
+    const validateResult = readFilter(filterGroup);
     if (validateResult.valid === false) {
       throw new Error(validateResult.errorMessage);
     }

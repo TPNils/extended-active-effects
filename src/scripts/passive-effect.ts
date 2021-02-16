@@ -34,7 +34,8 @@ export interface ActiveEffectData {
   tint?: string;
 }
 
-export interface PassiveEffectData extends ActiveEffectData {
+export interface PassiveEffectData extends Omit<ActiveEffectData, 'disabled'> {
+  filter: any; // TODO
 }
 
 export interface PassiveEffectFlag {

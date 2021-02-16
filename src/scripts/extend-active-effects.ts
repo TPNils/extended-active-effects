@@ -381,7 +381,7 @@ export class ExtendActiveEffectService {
     const upsertItemsByKey = new Map();
     (actor as any).effects.forEach((effect: ActiveEffect, effectId: string) => {
       const activeEffect = new WrappedActiveEffect({actor: actor}, {activeEffect: effect});
-      if (activeEffect.isEnabled() && activeEffect.matchesFilters()) {
+      if (activeEffect.isEnabled()) {
         for (const item of activeEffect.readActiveEffectItems()) {
           upsertItemsByKey.set(effectId + '.' + item.wrappedId, item.data);
         }
@@ -389,7 +389,7 @@ export class ExtendActiveEffectService {
     });
     PassiveEffect.getPassiveEffects(actor).forEach((effect: PassiveEffect, effectId: string) => {
       const activeEffect = new WrappedActiveEffect({actor: actor}, {passiveEffect: effect});
-      if (activeEffect.isEnabled() && activeEffect.matchesFilters()) {
+      if (activeEffect.isEnabled()) {
         for (const item of activeEffect.readActiveEffectItems()) {
           upsertItemsByKey.set(effectId + '.' + item.wrappedId, item.data);
         }

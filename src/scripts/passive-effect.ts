@@ -43,7 +43,6 @@ export interface PassiveEffectFlag {
   passiveEffects: PassiveEffectData[];
 }
 
-// TODO implement create/update/delete
 export class PassiveEffect extends ActiveEffect {
 
   public data: PassiveEffectData;
@@ -259,7 +258,6 @@ export class PassiveEffectService {
     }
   }
 
-  // TODO apply passive effects
   public onOwnedItemCreate(parent: Actor, ownedItemData: Item.Data<any>, options: any, userId: string): void {
     PassiveEffect.calcPassiveEffectsFromEmbeded(parent);
   }

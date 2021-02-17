@@ -1,3 +1,4 @@
+import { extendActiveEffectService } from "./extend-active-effects.js";
 import { Filter } from "./filter.js";
 import { ActiveEffectData, PassiveEffect } from "./passive-effect.js";
 import { StaticValues } from "./static-values.js";
@@ -14,31 +15,49 @@ class OverrideService {
 
     CONFIG.Actor.entityClass.prototype.applyActiveEffects = function (this: Actor<any>) {
       const originalEffects = this.effects;
-      const originalFilteredEffects: Collection<ActiveEffect> = new Collection([]);
       const activeAndPassiveEffects: Collection<ActiveEffect> = new Collection([]);
+      this.prepareDerivedData();
+      const rollData = this.getRollData();
       originalEffects.forEach(effect => {
-        if (service.matchesFilter(effect)) {
-          originalFilteredEffects.set(effect.data._id, effect);
+        const matches = service.matchesFilter({effect: effect, parsedParentData: rollData})
+        if (!effect.data.flags[StaticValues.moduleName]) {
+          effect.data.flags[StaticValues.moduleName] = {};
+        }
+        effect.data.flags[StaticValues.moduleName].filterMatches = matches;
+        if (matches) {
           activeAndPassiveEffects.set(effect.data._id, effect);
         }
       });
       PassiveEffect.getPassiveEffects(this).forEach(effect => {
-        if (service.matchesFilter(effect)) {
+        if (service.matchesFilter({effect: effect, parsedParentData: rollData})) {
           activeAndPassiveEffects.set(effect.data._id, effect);
         }
       });
       this.effects = activeAndPassiveEffects;
       service.originalActorApplyActiveEffects.call(this);
-      this.effects = originalFilteredEffects;
+      this.effects = originalEffects;
+
+      if ((this.constructor as any)?.config?.collection) {
+        extendActiveEffectService.calcApplyActorItems(this);
+      }
     }
   }
 
-  private matchesFilter(effect: ActiveEffect): boolean {
+  private matchesFilter({
+    effect,
+    parsedParentData
+  }: {
+    effect: ActiveEffect;
+    parsedParentData?: any;
+  }): boolean {
     const filter = new Filter(effect.data?.flags?.[StaticValues.moduleName]?.filter);
 
-    const data: any = {
-      data: effect.parent.data
-    };
+    const data: any = {};
+    if (parsedParentData) {
+      data.data = parsedParentData;
+    } else {
+      data.data = (effect.parent instanceof Actor) ? effect.parent.getRollData() : effect.parent.data
+    }
 
     const regx = (effect.data as ActiveEffectData)?.origin?.match(/^Actor\.([^\.]+)\.OwnedItem\.(.+)$/);
     if (regx) {

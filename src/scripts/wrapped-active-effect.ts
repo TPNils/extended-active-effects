@@ -75,7 +75,7 @@ export class WrappedActiveEffect {
     if (!effect) {
       return false;
     }
-    return !effect.data.disabled;
+    return !effect.data.disabled && !(effect.data.flags?.[StaticValues.moduleName]?.filterMatches === false);
   }
 
   /**

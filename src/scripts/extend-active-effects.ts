@@ -1,11 +1,11 @@
-import { PassiveEffect, PassiveEffectData } from './passive-effect.js';
+import { PassiveEffect } from './passive-effect.js';
 import { StaticValues } from './static-values.js';
 import { CreateElementParam, UtilsHtml } from './utils-html.js';
 import { WrappedActiveEffect } from './wrapped-active-effect.js';
 
 const flagScope = StaticValues.moduleName;
 
-export class ExtendActiveEffectService {
+class ExtendActiveEffectService {
   /* public */
 
   constructor() {
@@ -299,7 +299,7 @@ export class ExtendActiveEffectService {
     const actorData = JSON.parse(JSON.stringify(parent.data));
     actorData.effects = actorData.effects ? actorData.effects : [];
     actorData.effects.push(activeEffect);
-    this._calcApplyActorItems(new Actor(actorData, null));
+    this.calcApplyActorItems(new Actor(actorData, null));
   }
   private _onUpdateActiveEffect(parent, activeEffect, options, userId: string): void {
     if (!StaticValues.supportedAutoApplyParentTypes.includes(parent.data.type)) {
@@ -314,7 +314,7 @@ export class ExtendActiveEffectService {
         return effect;
       }
     });
-    this._calcApplyActorItems(new Actor(actorData, null));
+    this.calcApplyActorItems(new Actor(actorData, null));
   }
   private _onDeleteActiveEffect(parent, activeEffect, options, userId: string): void {
     if (!StaticValues.supportedAutoApplyParentTypes.includes(parent.data.type)) {
@@ -323,7 +323,7 @@ export class ExtendActiveEffectService {
     const actorData = JSON.parse(JSON.stringify(parent.data));
     actorData.effects = actorData.effects ? actorData.effects : [];
     actorData.effects = actorData.effects.filter(effect => effect._id !== activeEffect._id);
-    this._calcApplyActorItems(new Actor(actorData, null));
+    this.calcApplyActorItems(new Actor(actorData, null));
   }
   private  _onUpdateActor(actor: Actor<any>, difference: Partial<Actor.Data<any>>, options, userId: string): void {
     if (!StaticValues.supportedAutoApplyParentTypes.includes(actor.data.type)) {
@@ -347,7 +347,7 @@ export class ExtendActiveEffectService {
     }
 
     if (recalc) {
-      this._calcApplyActorItems(actor);
+      this.calcApplyActorItems(actor);
     }
   }
 
@@ -369,7 +369,6 @@ export class ExtendActiveEffectService {
 
       let flatUpdate = flattenObject(difference);
       const allowedKeys = [/^_id$/, /^data\.uses\.value$/, /^data\.flags/];
-      console.log(flatUpdate)
       for (const key in flatUpdate) {
         if (Object.prototype.hasOwnProperty.call(flatUpdate, key)) {
           let keyAllowed = false;
@@ -407,7 +406,7 @@ export class ExtendActiveEffectService {
     const actorData = JSON.parse(JSON.stringify(parent.data));
     actorData.items = actorData.items ? actorData.items : [];
     actorData.items.push(ownedItem);
-    this._calcApplyActorItems(new Actor(actorData, null));
+    this.calcApplyActorItems(new Actor(actorData, null));
   }
   private _onUpdateOwnedItem(parent: Actor, ownedItem: Item.Data<any>, difference, options: Partial<Item<any>>, userId: string): void {
     if (!StaticValues.supportedAutoApplyParentTypes.includes(parent.data.type)) {
@@ -422,7 +421,7 @@ export class ExtendActiveEffectService {
         return item;
       }
     });
-    this._calcApplyActorItems(new Actor(actorData, null));
+    this.calcApplyActorItems(new Actor(actorData, null));
   }
   private _onDeleteOwnedItem(parent: Actor, ownedItem: Item.Data<any>, options: Partial<Item<any>>, userId: string): void {
     if (!StaticValues.supportedAutoApplyParentTypes.includes(parent.data.type)) {
@@ -431,10 +430,10 @@ export class ExtendActiveEffectService {
     const actorData = JSON.parse(JSON.stringify(parent.data));
     actorData.items = actorData.items ? actorData.items : [];
     actorData.items = actorData.items.filter(item => item._id !== ownedItem._id);
-    this._calcApplyActorItems(new Actor(actorData, null));
+    this.calcApplyActorItems(new Actor(actorData, null));
   }
 
-  private _calcApplyActorItems(actor: Actor): void {
+  public calcApplyActorItems(actor: Actor): void {
     const upsertItemsByKey = new Map();
     (actor as any).effects.forEach((effect: ActiveEffect, effectId: string) => {
       const activeEffect = new WrappedActiveEffect({actor: actor}, {activeEffect: effect});
@@ -523,3 +522,6 @@ export class ExtendActiveEffectService {
   }
   
 }
+
+const extendActiveEffectService = new ExtendActiveEffectService();
+export {extendActiveEffectService};

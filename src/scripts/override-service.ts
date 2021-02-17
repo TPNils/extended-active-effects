@@ -1,5 +1,6 @@
 import { Filter } from "./filter.js";
 import { ActiveEffectData, PassiveEffect } from "./passive-effect.js";
+import { StaticValues } from "./static-values.js";
 
 class OverrideService {
   private originalActorApplyActiveEffects: () => void;
@@ -33,13 +34,13 @@ class OverrideService {
   }
 
   private matchesFilter(effect: ActiveEffect): boolean {
-    const filter = new Filter(effect.data);
+    const filter = new Filter(effect.data?.flags?.[StaticValues.moduleName]?.filter);
 
     const data: any = {
       data: effect.parent.data
     };
 
-    const regx = (effect.data as ActiveEffectData)?.origin.match(/^Actor\.([^\.]+)\.OwnedItem\.(.+)$/);
+    const regx = (effect.data as ActiveEffectData)?.origin?.match(/^Actor\.([^\.]+)\.OwnedItem\.(.+)$/);
     if (regx) {
       const itemData = game.actors?.get(regx[1])?.items.get(regx[2])?.data;
       if (itemData) {

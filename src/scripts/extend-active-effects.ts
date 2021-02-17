@@ -336,12 +336,12 @@ export class ExtendActiveEffectService {
     }
     // If the diff tracker is on, don't update if the item's didn't update
     if (!recalc) {
-      recalc = !!difference.items;
+      recalc = !!difference?.items;
     }
-    if (!recalc && difference?.flags[StaticValues.moduleName]) {
-      if (difference?.flags[StaticValues.moduleName].passiveEffects) {
+    if (!recalc && difference?.flags?.[StaticValues.moduleName]) {
+      if (difference?.flags?.[StaticValues.moduleName]?.passiveEffects) {
         recalc = true;
-      } else if (difference?.flags[StaticValues.moduleName]['-=passiveEffects'] !== undefined) {
+      } else if (difference?.flags?.[StaticValues.moduleName]?.['-=passiveEffects'] !== undefined) {
         recalc = true;
       }
     }
@@ -365,13 +365,37 @@ export class ExtendActiveEffectService {
   }
   private _onPreUpdateOwnedItem(parent: Actor, ownedItem: any, difference: Partial<Item<any>>, options, userId: string): boolean {
     if (ownedItem.flags && ownedItem.flags[flagScope] && ownedItem.flags[flagScope].effectItemKey) {
-      const effectId = ownedItem.flags[flagScope].effectItemKey.replace(/\.[0-9]+$/g, '');
-      const activeEffect = new WrappedActiveEffect({actorId: parent.data._id}, {activeEffectId: effectId})
-      if (activeEffect.isEnabled()) {
-        // TODO should update be supported? keeping track of charges
-        const source = activeEffect.getParent();
-        ui.notifications.error("This item is automatically assigned and can't be updated manually." + (source ? ` Source: ${source.data.name} (${source.data.type})` : ""));
-        return false;
+      let updateAllowed = true;
+
+      let flatUpdate = flattenObject(difference);
+      const allowedKeys = [/^_id$/, /^data\.uses\.value$/, /^data\.flags/];
+      console.log(flatUpdate)
+      for (const key in flatUpdate) {
+        if (Object.prototype.hasOwnProperty.call(flatUpdate, key)) {
+          let keyAllowed = false;
+          for (const allowedKey of allowedKeys) {
+            if (allowedKey.test(key)) {
+              keyAllowed = true;
+              break;
+            }
+          }
+
+          if (!keyAllowed) {
+            updateAllowed = false;
+            break;
+          }
+        }
+      }
+
+      if (!updateAllowed) {
+        const effectId = ownedItem.flags[flagScope].effectItemKey.replace(/\.[0-9]+$/g, '');
+        const activeEffect = new WrappedActiveEffect({actorId: parent.data._id}, {activeEffectId: effectId})
+        if (activeEffect.isEnabled()) {
+          // TODO should update be supported? keeping track of charges
+          const source = activeEffect.getParent();
+          ui.notifications.error("This item is automatically assigned and can't be updated manually." + (source ? ` Source: ${source.data.name} (${source.data.type})` : ""));
+          return false;
+        }
       }
     }
     return true;

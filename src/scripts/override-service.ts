@@ -1,4 +1,4 @@
-import { readFilter } from "./filter.js";
+import { Filter } from "./filter.js";
 import { ActiveEffectData, PassiveEffect } from "./passive-effect.js";
 
 class OverrideService {
@@ -33,10 +33,7 @@ class OverrideService {
   }
 
   private matchesFilter(effect: ActiveEffect): boolean {
-    const filter = readFilter(effect.data);
-    if (filter.valid) {
-      return false;
-    }
+    const filter = new Filter(effect.data);
 
     const data: any = {
       data: effect.parent.data
@@ -50,7 +47,7 @@ class OverrideService {
       }
     }
 
-    return filter.normalizedFilters.matches(data);
+    return filter.matches(data);
   }
 
 }

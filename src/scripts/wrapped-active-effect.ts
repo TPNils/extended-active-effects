@@ -1,4 +1,4 @@
-import { Filter, readFilter } from "./filter.js";
+import { Filter } from "./filter.js";
 import { PassiveEffect } from "./passive-effect.js";
 import { StaticValues } from "./static-values.js";
 
@@ -121,19 +121,16 @@ export class WrappedActiveEffect {
       return null;
     }
 
-    return readFilter(effect.getFlag(flagScope, 'filters')).normalizedFilters;
+    return new Filter(effect.getFlag(flagScope, 'filters'));
   }
 
   public async writeFilters(filterGroup: Filter.Group | null): Promise<any> {
     /* Validate */
-    const validateResult = readFilter(filterGroup);
-    if (validateResult.valid === false) {
-      throw new Error(validateResult.errorMessage);
-    }
+    const validateResult = new Filter(filterGroup);
 
     /* Execute */
     const activeEffect = this.getActiveEffect();
-    return activeEffect.setFlag(flagScope, "filters", validateResult.normalizedFilters);
+    return activeEffect.setFlag(flagScope, "filters", validateResult.data);
   }
 
   /**

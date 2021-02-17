@@ -12,21 +12,17 @@ export namespace Filter {
   }
 }
 
-export interface Filter {
-  matches(data: {[key: string]: any}): boolean;
-}
-
-class FilterImpl implements Filter {
+export class Filter {
 
   constructor(
-    private readonly data: Filter.Group
+    public readonly data: Filter.Group
   ){}
 
   public matches(data: {[key: string]: any}): boolean {
     if (!this.data) {
       return true;
     }
-    return FilterImpl.matchesGroup(flattenObject(data), this.data);
+    return Filter.matchesGroup(flattenObject(data), this.data);
   }
 
   private static matchesGroup(flatData: Record<string, any>, group: Filter.Group): boolean {
@@ -83,7 +79,7 @@ class FilterImpl implements Filter {
     }
   }
 
-  private static isGroup(condition: any): condition is Filter.Group {
+  public static isGroup(condition: any): condition is Filter.Group {
     const keys = Object.keys(condition);
     if (keys.length !== 2) {
       return false;
@@ -91,12 +87,4 @@ class FilterImpl implements Filter {
     return ['AND', 'OR'].includes(condition.groupType) && Object.hasOwnProperty.call(condition, 'conditions');
   }
 
-}
-
-export function readFilter(data: any): {valid: true, normalizedFilters: Filter} | {valid: false, normalizedFilters: null, errorMessage: string} {
-  // TODO validation
-  return {
-    valid: true,
-    normalizedFilters: new FilterImpl(data)
-  }
 }

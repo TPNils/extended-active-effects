@@ -42,7 +42,6 @@ export class CompendiumUtils {
 
   private static execute(): void {
     const requests = this.requests;
-    console.log(requests);
     this.requests = new Map<string, RequestsItems>();
 
     requests.forEach((items, compendiumId) => {

@@ -1,11 +1,27 @@
+import { CompendiumUtils } from "./compendium-utils.js";
 import { Filter } from "./filter.js";
 import { PassiveEffect } from "./passive-effect.js";
 import { StaticValues } from "./static-values.js";
 
+function uuid() {
+  var S4 = function() {
+     return (((1+Math.random())*0x10000)|0).toString(16).substring(1);
+  };
+  return (S4()+S4()+"-"+S4()+"-"+S4()+"-"+S4()+"-"+S4()+S4()+S4());
+}
+
 const flagScope = StaticValues.moduleName;
 
 // Provide type safety
-type ItemData = any;
+export interface ItemReference {
+  id: string;
+  compendiumId: string;
+  entityId: string;
+};
+export type NewItemReference = Omit<ItemReference, 'id'>;
+interface LoadedItemReference extends ItemReference {
+  itemData: Item.Data<any>;
+}
 
 type EffectParent = {
   actor?: Actor & {effects?: Collection<ActiveEffect>};
@@ -100,19 +116,28 @@ export class WrappedActiveEffect {
     
     return actor.items.get(regResponse[2]);
   }
-
-  public readActiveEffectItems(): {wrappedId: number, data: ItemData}[] {
+  
+  private readItemReferences(): ItemReference[] {
     const effect = this.getActiveEffect();
     if (!effect) {
       return [];
     }
-    const items = effect.getFlag(flagScope, 'items');
+    const items: ItemReference[] = effect.getFlag(flagScope, 'items');
     if (!items) {
       return [];
     }
+    return items.filter(item => item?.compendiumId && item?.entityId);
+  }
 
-    items.filter(item => typeof item.data === 'object' && Number.isInteger(item.wrappedId)).sort((a, b) => a.data.name.localeCompare(b.data.name));
-    return JSON.parse(JSON.stringify(items));
+  public async readActiveEffectItems(): Promise<LoadedItemReference[]> {
+    return Promise.all(this.readItemReferences().map(item => {
+      return CompendiumUtils.request(item.compendiumId, item.entityId).then(response => {
+        return {
+          ...item,
+          itemData: response.data as Item.Data
+        }
+      });
+    }));
   }
 
   public readFilters(): Filter | null {
@@ -133,60 +158,24 @@ export class WrappedActiveEffect {
     return activeEffect.setFlag(flagScope, "filters", validateResult.data);
   }
 
-  /**
-   * Validate if an item can be added
-   */
-  public validateItem(item: ItemData): {valid: true} | {valid: false, errorMessage: string} {
-    if (!item || !StaticValues.supportedItemTypes.includes(item.type)) {
-      return {valid: false, errorMessage: 'Supported items: ' + StaticValues.supportedItemTypes.sort().join(', ')};
-    }
-    return {valid: true};
-  }
-
-  public async addItem(item: ItemData): Promise<any> {
-    const validateResult = this.validateItem(item);
-    if (validateResult.valid === false) {
-      throw new Error(validateResult.errorMessage);
-    }
-    
-    const items: {wrappedId?: number, data: ItemData}[] = this.readActiveEffectItems();
-    items.push({data: item});
+  public async addItem(item: NewItemReference): Promise<any> {
+    const items = this.readItemReferences();
+    items.push({
+      ...item,
+      id: uuid()
+    });
     return this.writeActiveEffectItems(items);
   }
 
-  public async deleteItem(itemOrId: {wrappedId: number, data?: any} | number): Promise<any> {
-    let id: number;
-    if (typeof itemOrId === 'number') {
-      id = itemOrId;
-    } else {
-      id = itemOrId.wrappedId;
+  public async deleteItems(id: string | string[]): Promise<any> {
+    if (!Array.isArray(id)) {
+      id = [id];
     }
-
-    return this.writeActiveEffectItems(this.readActiveEffectItems().filter(item => item.wrappedId !== id));
+    return this.writeActiveEffectItems(this.readItemReferences().filter(item => !id.includes(item.id)));
   }
 
-  public async writeActiveEffectItems(items: {wrappedId?: number, data: ItemData}[]): Promise<any> {
-    items = items.filter(item => StaticValues.supportedItemTypes.includes(item.data.type));
-    for (let i = 0; i < items.length; i++) {
-      items[i].data = JSON.parse(JSON.stringify(items[i].data));
-      delete items[i].data._id;
-    }
-    const activeEffect = this.getActiveEffect();
-    const nextInitialId = activeEffect.getFlag(flagScope, 'itemsNextId') || 0;
-    let nextId = nextInitialId;
-
-    for (const item of items) {
-      if (!Number.isInteger(item.wrappedId)) {
-        item.wrappedId = nextId++;
-      }
-    }
-    
-    const promises = [];
-    if (nextInitialId !== nextId) {
-      promises.push(activeEffect.setFlag(flagScope, "itemsNextId", nextId));
-    }
-    promises.push(activeEffect.setFlag(flagScope, "items", items));
-    return Promise.all(promises);
+  public async writeActiveEffectItems(items: ItemReference[]): Promise<any> {
+    return this.getActiveEffect().setFlag(flagScope, "items", items);
   }
 
 }

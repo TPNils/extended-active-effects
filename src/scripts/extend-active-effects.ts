@@ -1,7 +1,7 @@
 import { PassiveEffect } from './passive-effect.js';
 import { StaticValues } from './static-values.js';
 import { CreateElementParam, UtilsHtml } from './utils-html.js';
-import { WrappedActiveEffect } from './wrapped-active-effect.js';
+import { NewItemReference, WrappedActiveEffect } from './wrapped-active-effect.js';
 
 const flagScope = StaticValues.moduleName;
 
@@ -139,11 +139,11 @@ class ExtendActiveEffectService {
     renderNavigation();
 
     /* Body */
-    const renderBody = () => {
-      const currentFeaturesSection = html[0].querySelector('form section[data-tab="features"]');
+    const renderBody = async () => {
+      const currentFeaturesSection = () => html[0].querySelector('form section[data-tab="features"]');
       let featuresSection;
-      if (currentFeaturesSection) {
-        featuresSection = currentFeaturesSection.cloneNode(false);
+      if (currentFeaturesSection()) {
+        featuresSection = currentFeaturesSection().cloneNode(false);
       } else {
         featuresSection = UtilsHtml.createElement({
           tagName: 'section',
@@ -154,10 +154,10 @@ class ExtendActiveEffectService {
         });
       }
       
-      const currentSpellSection = html[0].querySelector('form section[data-tab="spells"]');
+      const currentSpellSection = () => html[0].querySelector('form section[data-tab="spells"]');
       let spellsSection;
-      if (currentSpellSection) {
-        spellsSection = currentSpellSection.cloneNode(false);
+      if (currentSpellSection()) {
+        spellsSection = currentSpellSection().cloneNode(false);
       } else {
         spellsSection = UtilsHtml.createElement({
           tagName: 'section',
@@ -178,7 +178,7 @@ class ExtendActiveEffectService {
         children: []
       };
   
-      for (const item of activeEffect.readActiveEffectItems()) {
+      for (const item of await activeEffect.readActiveEffectItems()) {
         const itemEntry: CreateElementParam = {
           tagName: 'li',
           children: [
@@ -189,13 +189,13 @@ class ExtendActiveEffectService {
                 {
                   tagName: 'img', 
                   classes: ['item-image'], 
-                  attributes: {'src': item.data.img}
+                  attributes: {'src': item.itemData.img}
                 },
                 {
                   tagName: 'h4', 
                   classes: ['name'], 
                   children: [
-                    {text: item.data.name}
+                    {text: item.itemData.name}
                   ]
                 },
                 {
@@ -207,7 +207,7 @@ class ExtendActiveEffectService {
                       listeners: [
                         {
                           event: 'click', 
-                          listener: () => activeEffect.deleteItem(item).then(() => renderBody())
+                          listener: () => activeEffect.deleteItems(item.id).then(() => renderBody())
                         }
                       ]
                     }
@@ -218,9 +218,9 @@ class ExtendActiveEffectService {
           ]
         };
         
-        if (StaticValues.featureItemTypes.includes(item.data.type)) {
+        if (StaticValues.featureItemTypes.includes(item.itemData.type)) {
           featuresListElement.children.push(itemEntry);
-        } else if (StaticValues.spellItemTypes.includes(item.data.type)) {
+        } else if (StaticValues.spellItemTypes.includes(item.itemData.type)) {
           spellListElement.children.push(itemEntry);
         }
       }
@@ -239,11 +239,11 @@ class ExtendActiveEffectService {
       featuresSection.appendChild(UtilsHtml.createElement(featuresListElement));
       spellsSection.appendChild(UtilsHtml.createElement(spellListElement));
 
-      if (currentFeaturesSection) {
-        currentFeaturesSection.remove();
+      if (currentFeaturesSection()) {
+        currentFeaturesSection().remove();
       }
-      if (currentSpellSection) {
-        currentSpellSection.remove();
+      if (currentSpellSection()) {
+        currentSpellSection().remove();
       }
   
       const lastSection = html[0].querySelector('form section:last-of-type');
@@ -257,17 +257,17 @@ class ExtendActiveEffectService {
     // Method may be called multiple times with DynamicActiveEffects, so ensure event listeners are not added twice
     if (form) {
       form.setAttribute(`${flagScope}-drop`, true);
-      form.addEventListener('drop', event => this._getDropItem(event).then(item => {
-        const validateResult = activeEffect.validateItem(item);
-        if (validateResult.valid === false) {
-          ui.notifications.error(validateResult.errorMessage);
+      form.addEventListener('drop', event => {
+        const item = this._getDropItem(event);
+        if (!item) {
+          ui.notifications.warn('You can only drop compendium items');
           return;
         }
         activeEffect.addItem(item).then(() => {
           renderBody();
 
-          // Focus to the drop tab
-          let shouldBeActiveType;
+          // TODO Focus to the drop tab
+          /*let shouldBeActiveType;
           if (StaticValues.featureItemTypes.includes(item.type)) {
             shouldBeActiveType = 'features';
           } else if (StaticValues.spellItemTypes.includes(item.type)) {
@@ -284,10 +284,10 @@ class ExtendActiveEffectService {
           if (currentActive !== shouldBeActive) {
             currentActive.className = currentActive.className.split(' ').filter(className => className !== 'active').join(' ');
             shouldBeActive.className = [...shouldBeActive.classList, 'active'].join(' ');
-          }
+          }*/
 
         });
-      }));
+      });
     }
     
   }
@@ -433,92 +433,93 @@ class ExtendActiveEffectService {
     this.calcApplyActorItems(new Actor(actorData, null));
   }
 
-  public calcApplyActorItems(actor: Actor): void {
-    const upsertItemsByKey = new Map();
+  public async calcApplyActorItems(actor: Actor): Promise<void> {
+    const upsertItemsByKey = new Map<string, Item.Data<any>>();
+    const promises: Promise<any>[] = [];
     (actor as any).effects.forEach((effect: ActiveEffect, effectId: string) => {
       const activeEffect = new WrappedActiveEffect({actor: actor}, {activeEffect: effect});
       if (activeEffect.isEnabled()) {
-        for (const item of activeEffect.readActiveEffectItems()) {
-          upsertItemsByKey.set(effectId + '.' + item.wrappedId, item.data);
-        }
+        promises.push(activeEffect.readActiveEffectItems().then(items => {
+          for (const item of items) {
+            upsertItemsByKey.set(effectId + '.' + item.id, item.itemData);
+          }
+        }));
       }
     });
     PassiveEffect.getPassiveEffects(actor).forEach((effect: PassiveEffect, effectId: string) => {
       const activeEffect = new WrappedActiveEffect({actor: actor}, {passiveEffect: effect});
       if (activeEffect.isEnabled()) {
-        for (const item of activeEffect.readActiveEffectItems()) {
-          upsertItemsByKey.set(effectId + '.' + item.wrappedId, item.data);
-        }
+        promises.push(activeEffect.readActiveEffectItems().then(items => {
+          for (const item of items) {
+            upsertItemsByKey.set(effectId + '.' + item.id, item.itemData);
+          }
+        }));
       }
     });
 
-    let itemsAdded = [];
-    let itemsDeleted = [];
-    const newItemList = [];
-    const appliedItemsByKey = new Map();
-    actor.items.forEach((item) => {
-      const key = item.getFlag(flagScope, 'effectItemKey');
-      if (!key) {
-        newItemList.push(item.data);
-      } else {
-        appliedItemsByKey.set(key, item.data);
-        if (!upsertItemsByKey.has(key)) {
-          itemsAdded.push(item.data);
+    return Promise.all(promises).then(() => {
+      let itemsAdded = [];
+      let itemsDeleted = [];
+      const newItemList = [];
+      const appliedItemsByKey = new Map();
+      actor.items.forEach((item) => {
+        const key = item.getFlag(flagScope, 'effectItemKey');
+        if (!key) {
+          newItemList.push(item.data);
+        } else {
+          appliedItemsByKey.set(key, item.data);
+          if (!upsertItemsByKey.has(key)) {
+            itemsAdded.push(item.data);
+          }
         }
+      });
+  
+      upsertItemsByKey.forEach((itemData, key) => {
+        if (appliedItemsByKey.has(key)) {
+          newItemList.push(appliedItemsByKey.get(key));
+        } else {
+          if (!itemData.flags) {
+            itemData.flags = {};
+          }
+          if (!itemData.flags[flagScope]) {
+            itemData.flags[flagScope] = {};
+          }
+          itemData.flags[flagScope].effectItemKey = key;
+          newItemList.push(itemData);
+          itemsAdded.push(itemData);
+        }
+      });
+  
+      if (itemsAdded.length > 0 || itemsDeleted.length > 0) {
+        Actor.update({_id: actor._id, items: newItemList});
       }
     });
-
-    upsertItemsByKey.forEach((itemData, key) => {
-      if (appliedItemsByKey.has(key)) {
-        newItemList.push(appliedItemsByKey.get(key));
-      } else {
-        if (!itemData.flags) {
-          itemData.flags = {};
-        }
-        if (!itemData.flags[flagScope]) {
-          itemData.flags[flagScope] = {};
-        }
-        itemData.flags[flagScope].effectItemKey = key;
-        newItemList.push(itemData);
-        itemsAdded.push(itemData);
-      }
-    });
-
-    if (itemsAdded.length > 0 || itemsDeleted.length > 0) {
-      Actor.update({_id: actor._id, items: newItemList});
-    }
   }
 
   /**
    * @returns {any} item data
    */
-  private _getDropItem(dropEvent: any | null): Promise<any> {
+  private _getDropItem(dropEvent: any | null): NewItemReference | null {
     const rawDropData = dropEvent.dataTransfer.getData('text/plain');
     if (!rawDropData) {
-      return Promise.resolve(null);
+      return null;
     }
     try {
       const dropData = JSON.parse(dropEvent.dataTransfer.getData('text/plain'));
       if (dropData.type === 'Item') {
         if (dropData.pack) {
           // Drag from compendium
-          return game.packs.get(dropData.pack).getEntity(dropData.id);
-        } else if (typeof dropData.data === 'object') {
-          // Raw data is present, could happen when dragging from an actor inventory
-          return Promise.resolve(game.items.get(dropData.data));
-        } else {
-          // Drag from item directory
-          return Promise.resolve(game.items.get(dropData.id));
+          return {compendiumId: dropData.pack, entityId: dropData.id};
         }
       }
     } catch(e) {
       if (e instanceof SyntaxError) {
-        return Promise.resolve(null);
+        return null;
       } else {
-        return Promise.reject(e);
+        throw e;
       }
     }
-    return Promise.resolve(null);
+    return null;
   }
   
 }

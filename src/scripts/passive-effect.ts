@@ -1,10 +1,10 @@
 import { StaticValues } from "./static-values.js";
 
 export interface DurationResult {
-  type: 'seconds' | 'turns' | 'none';
-  duration: number | null;
-  remaining: number | null;
-  label: string;
+  type?: 'seconds' | 'turns' | 'none';
+  duration?: number | null;
+  remaining?: number | null;
+  label?: string;
 }
 
 export interface ActiveEffectChange {
@@ -34,8 +34,9 @@ export interface ActiveEffectData {
   tint?: string;
 }
 
-export interface PassiveEffectData extends Omit<ActiveEffectData, 'disabled'> {
-  filter: any; // TODO
+export interface PassiveEffectData extends ActiveEffectData {
+  disabled: false; // can't be disabled
+  duration: {}; // can't have a duration
 }
 
 export interface PassiveEffectFlag {
@@ -45,14 +46,12 @@ export interface PassiveEffectFlag {
 
 export class PassiveEffect extends ActiveEffect {
 
-  public data: PassiveEffectData;
-
   constructor(data: PassiveEffectData, parent: Entity<any>) {
-    super(data, parent);
+    super(PassiveEffect.normalizeData(data), parent);
   }
 
   public get duration(): DurationResult {
-    return super.duration;
+    return {};
   }
 
   public async create(options?: any): Promise<any> {
@@ -62,7 +61,7 @@ export class PassiveEffect extends ActiveEffect {
     const passiveEffectFlag: PassiveEffectFlag = PassiveEffect.readFlag(this.parent);
     this.data._id = `PassiveEffect.${passiveEffectFlag.nextId++}`;
     this.data.origin = `${this.getParentTypeName()}.${this.parent.id}`;
-    passiveEffectFlag.passiveEffects.push(this.data);
+    passiveEffectFlag.passiveEffects.push(PassiveEffect.normalizeData(this.data));
     return PassiveEffect.writeFlag(this.parent, passiveEffectFlag);
   }
 
@@ -76,7 +75,7 @@ export class PassiveEffect extends ActiveEffect {
     for (const passiveEffect of passiveEffectFlag.passiveEffects) {
       if (passiveEffect._id === this.data._id) {
         filteredEffects.push({
-          ...data,
+          ...PassiveEffect.normalizeData(data),
           _id: this.data._id,
           origin: data.origin ? data.origin : `${this.getParentTypeName()}.${this.parent.id}`
         });
@@ -150,6 +149,14 @@ export class PassiveEffect extends ActiveEffect {
 
   private static writeFlag(entity: Entity, flag: PassiveEffectFlag): Promise<any> {
     return entity.setFlag(StaticValues.moduleName, 'passiveEffects', flag);
+  }
+
+  private static normalizeData(data: ActiveEffectData): PassiveEffectData {
+    return {
+      ...data,
+      duration: {},
+      disabled: false
+    }
   }
 
   public static calcPassiveEffectsFromEmbeded(entity: Entity): Promise<any> {
